@@ -9,7 +9,7 @@ from .vit import VisionTransformer
 
 
 
-class LayerScalePatchMLP(BaseModule):
+class MLP_Mixer(BaseModule):
     """
     LayerScalePatchMLP replaces the AttentionLayer used in LayerScaleTransformer by MLP,
     and replaces all LayerNorms as AffineLayers.
@@ -30,7 +30,7 @@ class LayerScalePatchMLP(BaseModule):
                  act_cfg=dict(type='GELU'),
                  init_values=1e-4,
                  num_patches = 196):
-        super(LayerScalePatchMLP, self).__init__()
+        super(MLP_Mixer, self).__init__()
         
         self.norm1 = nn.LayerNorm(embed_dims)
         
