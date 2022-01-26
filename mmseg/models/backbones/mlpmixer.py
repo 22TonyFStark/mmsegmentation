@@ -11,13 +11,15 @@ from .vit import VisionTransformer
 
 class MLP_Mixer_Layer(BaseModule):
     """
-    LayerScalePatchMLP replaces the AttentionLayer used in LayerScaleTransformer by MLP,
+    MLP_Mixer_Layer replaces the AttentionLayer used in LayerScaleTransformer by MLP,
     and replaces all LayerNorms as AffineLayers.
     It is a simple residual network that alternates: 
     1. a linear layer in which image PATCHES interact, independently and identically 
     across channels, 
     2. a two-layer feed-forward network in which CHANNELS interact independently per
     patch.
+    3. The differences between MLP-Mixer and ResMLP is that ResMLP uses layerscale and 
+    replaces the Layernorm as Affine.
     
     """
 
