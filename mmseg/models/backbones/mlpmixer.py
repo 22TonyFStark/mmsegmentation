@@ -9,7 +9,7 @@ from .vit import VisionTransformer
 
 
 
-class MLP_Mixer(BaseModule):
+class MLP_Mixer_Layer(BaseModule):
     """
     LayerScalePatchMLP replaces the AttentionLayer used in LayerScaleTransformer by MLP,
     and replaces all LayerNorms as AffineLayers.
@@ -30,7 +30,7 @@ class MLP_Mixer(BaseModule):
                  act_cfg=dict(type='GELU'),
                  init_values=1e-4,
                  num_patches = 196):
-        super(MLP_Mixer, self).__init__()
+        super(MLP_Mixer_Layer, self).__init__()
         
         self.norm1 = nn.LayerNorm(embed_dims)
         
@@ -48,19 +48,16 @@ class MLP_Mixer(BaseModule):
             dropout_layer=None,
             act_cfg=act_cfg,
             )  
-        
-        self.gamma_1 = nn.Parameter(init_values * torch.ones((embed_dims)),requires_grad=True)
-        self.gamma_2 = nn.Parameter(init_values * torch.ones((embed_dims)),requires_grad=True)
 
     def forward(self, x):
-        x = x + self.drop_path(self.gamma_1 * self.attn(self.norm1(x).transpose(1,2)).transpose(1,2))
-        x = x + self.drop_path(self.gamma_2 * self.ffn(self.norm2(x)))
+        x = x + self.drop_path(self.attn(self.norm1(x).transpose(1,2)).transpose(1,2))
+        x = x + self.drop_path(self.ffn(self.norm2(x)))
         return x 
 
 
 
 @BACKBONES.register_module() 
-class LayerScaleResMLP(VisionTransformer):
+class MLP_Mixer(VisionTransformer):
 
     def __init__(self, 
                  init_scale=1e-4,
@@ -74,7 +71,7 @@ class LayerScaleResMLP(VisionTransformer):
                  act_cfg=dict(type="GELU"),
                  drop_path_rate=0.0,
                  **kwargs):
-        super(LayerScaleResMLP, self).__init__(
+        super(MLP_Mixer, self).__init__(
             img_size=img_size, 
             patch_size=patch_size, 
             in_channels=in_channels, 
