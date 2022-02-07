@@ -35,16 +35,18 @@ class Attention_talking_head(BaseModule):
         
     def forward(self, x):
         B, N, C = x.shape
-        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()  # (3,B,n_head,n_q,n_head_dim)
         q, k, v = qkv[0] * self.scale , qkv[1], qkv[2] 
     
-        attn = (q @ k.transpose(-2, -1)) 
+        attn = (q @ k.transpose(-2, -1))   # (B,n_head,n_q,n_k)
         
-        attn = self.proj_l(attn.permute(0,2,3,1).contiguous()).permute(0,3,1,2).contiguous()
+        # talking head: use linear combination of different heads (B,n_q,n_k,n_head) → (B,n_q,n_k,n_head)
+        attn = self.proj_l(attn.permute(0,2,3,1).contiguous()).permute(0,3,1,2).contiguous()  
                 
-        attn = attn.softmax(dim=-1)
-  
-        attn = self.proj_w(attn.permute(0,2,3,1).contiguous()).permute(0,3,1,2).contiguous()  # talking head
+        attn = attn.softmax(dim=-1)  # convert from logits to probs
+        
+        # talking head: use linear in head-dimension again
+        attn = self.proj_w(attn.permute(0,2,3,1).contiguous()).permute(0,3,1,2).contiguous()  
         attn = self.attn_drop(attn)
 
         x = (attn @ v).transpose(1, 2).reshape(B, N, C)
