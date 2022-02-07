@@ -10,6 +10,48 @@ from mmcv.cnn.bricks.transformer import MultiheadAttention
 from ..builder import BACKBONES
 from .vit import VisionTransformer
 
+
+class Attention_talking_head(BaseModule):
+    # taken from https://github.com/facebookresearch/deit/blob/main/cait_models.py
+    # with slight modifications (https://arxiv.org/pdf/2003.02436v1.pdf)
+    def __init__(self, dim, num_heads=8, qkv_bias=False, qk_scale=None, attn_drop=0., proj_drop=0.):
+        super().__init__()
+        
+        self.num_heads = num_heads
+        
+        head_dim = dim // num_heads
+        
+        self.scale = qk_scale or head_dim ** -0.5
+
+        self.qkv = nn.Linear(dim, dim * 3, bias=qkv_bias)
+        self.attn_drop = nn.Dropout(attn_drop)
+        
+        self.proj = nn.Linear(dim, dim)
+        
+        self.proj_l = nn.Linear(num_heads, num_heads)
+        self.proj_w = nn.Linear(num_heads, num_heads)
+        
+        self.proj_drop = nn.Dropout(proj_drop)
+        
+    def forward(self, x):
+        B, N, C = x.shape
+        qkv = self.qkv(x).reshape(B, N, 3, self.num_heads, C // self.num_heads).permute(2, 0, 3, 1, 4).contiguous()
+        q, k, v = qkv[0] * self.scale , qkv[1], qkv[2] 
+    
+        attn = (q @ k.transpose(-2, -1)) 
+        
+        attn = self.proj_l(attn.permute(0,2,3,1).contiguous()).permute(0,3,1,2).contiguous()
+                
+        attn = attn.softmax(dim=-1)
+  
+        attn = self.proj_w(attn.permute(0,2,3,1).contiguous()).permute(0,3,1,2).contiguous()  # talking head
+        attn = self.attn_drop(attn)
+
+        x = (attn @ v).transpose(1, 2).reshape(B, N, C)
+        x = self.proj(x)
+        x = self.proj_drop(x)
+        return x
+
     
 class LayerScale_Block(BaseModule):
     """
@@ -37,14 +79,12 @@ class LayerScale_Block(BaseModule):
             norm_cfg, embed_dims, postfix=1)
         self.add_module(self.norm1_name, norm1)
         
-        self.attn = MultiheadAttention(
+        self.attn = Attention_talking_head(
             embed_dims,
             num_heads=num_heads,
             attn_drop=attn_drop_rate,
             proj_drop=drop,
-            bias=qkv_bias,
-            batch_first=batch_first,
-            dropout_layer=None)
+            qkv_bias=qkv_bias)
         
         self.norm2_name, norm2 = build_norm_layer(
             norm_cfg, embed_dims, postfix=2)
